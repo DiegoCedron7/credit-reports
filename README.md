@@ -42,6 +42,14 @@ Para levantar el proyecto en tu entorno local, sigue estos pasos.
 
 ---
 
+## Configuración de .env
+DB_CONNECTION=
+DB_HOST
+DB_PORT=
+DB_DATABASE=
+DB_USERNAME=
+DB_PASSWORD=
+
 ## Configuración de Base de Datos
 
 Este proyecto usa un archivo SQL llamado `database.sql` ubicado en la **raíz** del proyecto. El cual ya está optimizado con ciertos indices necesarios para nuestras consultas a base de datos.
