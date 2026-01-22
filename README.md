@@ -102,14 +102,14 @@ Archivo:
 
 ### 2) Capa de Servicio (Service)
 
-El servicio `ReportService` es el encargado de:
+El servicio `SubscriptionService` es el encargado de:
 
 - **Generar** la consulta SQL con las uniones necesarias entre las tablas de `subscriptions`, `subscription_reports`, `report_loans`, `report_other_debts` y `report_credit_cards`.
 - **Realizar la exportación por chunks** para optimizar el uso de memoria al generar grandes cantidades de datos.
 
 Archivo:
 
-- `app/Services/ReportService.php`
+- `app/Services/SubscriptionService.php`
 
 ### 3) Capa de Exportación (Laravel Excel)
 
@@ -159,6 +159,7 @@ subscription_report.xlsx
 
 `GET /reports/credit/export?from=YYYY-MM-DD&to=YYYY-MM-DD`
 
+
 #### Validaciones
 
 - `from` es obligatorio y debe ser una fecha válida.
@@ -182,7 +183,7 @@ Retorna la descarga de un archivo `.xlsx`.
 ### Ejecutar un solo archivo de tests
 
 ```sh
-./vendor/bin/sail test tests/Feature/CreditReportExportEndpointTest.php
+./vendor/bin/sail test tests/Feature/SubscriptionControllerTest.php
 ```
 
 ---
