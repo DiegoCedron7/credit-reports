@@ -1,6 +1,3 @@
--- =============================================
--- DATABASE SCHEMA - Sistema de Suscripciones y Reportes Crediticios
--- =============================================
 DROP TABLE IF EXISTS report_credit_cards;
 
 DROP TABLE IF EXISTS report_other_debts;
@@ -11,7 +8,6 @@ DROP TABLE IF EXISTS subscription_reports;
 
 DROP TABLE IF EXISTS subscriptions;
 
--- Tabla de suscripciones
 CREATE TABLE
     subscriptions (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -23,10 +19,8 @@ CREATE TABLE
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );
 
--- Crear índice en created_at para optimizar búsquedas por fecha
 CREATE INDEX idx_subscriptions_created_at ON subscriptions (created_at);
 
--- Tabla de reportes de suscripción
 CREATE TABLE
     subscription_reports (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -37,10 +31,8 @@ CREATE TABLE
         FOREIGN KEY (subscription_id) REFERENCES subscriptions (id) ON DELETE CASCADE
     );
 
--- Crear índice en subscription_id para optimizar las uniones
 CREATE INDEX idx_subscription_reports_subscription_id ON subscription_reports (subscription_id);
 
--- Tabla de préstamos
 CREATE TABLE
     report_loans (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -55,13 +47,10 @@ CREATE TABLE
         FOREIGN KEY (subscription_report_id) REFERENCES subscription_reports (id) ON DELETE CASCADE
     );
 
--- Crear índice en subscription_report_id para optimizar las uniones
 CREATE INDEX idx_report_loans_subscription_report_id ON report_loans (subscription_report_id);
 
--- Crear índice en bank si las consultas frecuentes usan esta columna
 CREATE INDEX idx_report_loans_bank ON report_loans (bank);
 
--- Tabla de otras deudas
 CREATE TABLE
     report_other_debts (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -75,10 +64,8 @@ CREATE TABLE
         FOREIGN KEY (subscription_report_id) REFERENCES subscription_reports (id) ON DELETE CASCADE
     );
 
--- Crear índice en subscription_report_id para optimizar las uniones
 CREATE INDEX idx_report_other_debts_subscription_report_id ON report_other_debts (subscription_report_id);
 
--- Tabla de tarjetas de crédito
 CREATE TABLE
     report_credit_cards (
         id INT PRIMARY KEY AUTO_INCREMENT,
@@ -92,12 +79,8 @@ CREATE TABLE
         FOREIGN KEY (subscription_report_id) REFERENCES subscription_reports (id) ON DELETE CASCADE
     );
 
--- Crear índice en subscription_report_id para optimizar las uniones
 CREATE INDEX idx_report_credit_cards_subscription_report_id ON report_credit_cards (subscription_report_id);
 
--- =============================================
--- INSERT DATA - Suscripciones (100 registros)
--- =============================================
 INSERT INTO
     subscriptions (full_name, document, email, phone)
 VALUES
@@ -702,9 +685,6 @@ VALUES
         '+51999000100'
     );
 
--- =============================================
--- INSERT DATA - Subscription Reports (100 registros, 1 por suscripción)
--- =============================================
 INSERT INTO
     subscription_reports (subscription_id, period)
 VALUES
@@ -809,9 +789,6 @@ VALUES
     (99, '2025-12'),
     (100, '2025-12');
 
--- =============================================
--- INSERT DATA - Report Loans (distribución aleatoria 0-5 por reporte)
--- =============================================
 INSERT INTO
     report_loans (
         subscription_report_id,
@@ -964,9 +941,6 @@ VALUES
     (99, 'Interbank', 'DEF', 'PEN', 35000.00, 48),
     (100, 'BBVA', 'CPP', 'PEN', 17500.00, 28);
 
--- =============================================
--- INSERT DATA - Report Other Debts (distribución aleatoria 0-5 por reporte)
--- =============================================
 INSERT INTO
     report_other_debts (
         subscription_report_id,
@@ -1096,9 +1070,6 @@ VALUES
     (99, 'Caja Maynas', 'PEN', 7000.00, 48),
     (100, 'Financiera Compartamos', 'PEN', 4500.00, 28);
 
--- =============================================
--- INSERT DATA - Report Credit Cards (distribución aleatoria 0-5 por reporte)
--- =============================================
 INSERT INTO
     report_credit_cards (
         subscription_report_id,
