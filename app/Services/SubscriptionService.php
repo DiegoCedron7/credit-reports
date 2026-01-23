@@ -2,53 +2,92 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\LazyCollection;
 
 class SubscriptionService
 {
-    public function getSubscriptionDataForExport(string $from, string $to, \Closure $callback): void
+    public function creditReportStream(string $from, string $to): LazyCollection
     {
-        $chunkSize = 100;
+        $from .= ' 00:00:00';
+        $to .= ' 23:59:59';
 
-        $from .= " 00:00:00";
-        $to .= " 23:59:59";
-
-
-        DB::table('subscriptions as s')
-            ->select(
-                's.id',
-                's.full_name',
-                's.document as document',
-                's.email as email',
-                's.phone as phone',
-                's.created_at as created_at',
-                'sr.id as report_id',
-                'sr.created_at as report_created_at',
-                DB::raw("COALESCE(rl.bank, ro.entity, rc.bank) as company"),
-                DB::raw("CASE 
-                    WHEN rl.id IS NOT NULL THEN 'Loan' 
-                    WHEN ro.id IS NOT NULL THEN 'Other Debt' 
-                    WHEN rc.id IS NOT NULL THEN 'Credit Card' 
-                    ELSE 'Unknown' 
-                END as debt_type"),
-                DB::raw("COALESCE(rl.status, '') as situation"),
-                DB::raw("COALESCE(rl.expiration_days, ro.expiration_days, rc.line) as delay"),
-                DB::raw("COALESCE(ro.entity, '') as entity"),
-                DB::raw("COALESCE(rl.amount, ro.amount, NULL) as total_amount"),
-                DB::raw("COALESCE(rc.line, NULL) as line_total"),
-                DB::raw("COALESCE(rc.used, NULL) as line_used"),
-                DB::raw("'OK' as state")
-            )
+        $loans = DB::table('subscriptions as s')
             ->join('subscription_reports as sr', 's.id', '=', 'sr.subscription_id')
-            ->leftJoin('report_loans as rl', 'sr.id', '=', 'rl.subscription_report_id')
-            ->leftJoin('report_other_debts as ro', 'sr.id', '=', 'ro.subscription_report_id')
-            ->leftJoin('report_credit_cards as rc', 'sr.id', '=', 'rc.subscription_report_id')
-            ->whereBetween('s.created_at', [$from, $to])
-            ->orderBy('s.id', 'asc')
-            ->chunk($chunkSize, function ($results) use ($callback) {
-                $chunkData = $this->transformData($results);
-                $callback($chunkData);
-            });
+            ->join('report_loans as rl', 'sr.id', '=', 'rl.subscription_report_id')
+            ->whereBetween('sr.created_at', [$from, $to])
+            ->selectRaw("
+                CONCAT('L-', rl.id) as row_id,
+                sr.id as report_id,
+                s.full_name,
+                s.document,
+                s.email,
+                s.phone,
+                rl.bank as company,
+                'Loan' as debt_type,
+                rl.status as situation,
+                rl.expiration_days as delay,
+                '' as entity,
+                rl.amount as total_amount,
+                NULL as line_total,
+                NULL as line_used,
+                sr.created_at as report_created_at,
+                'OK' as state
+            ");
 
+        $others = DB::table('subscriptions as s')
+            ->join('subscription_reports as sr', 's.id', '=', 'sr.subscription_id')
+            ->join('report_other_debts as ro', 'sr.id', '=', 'ro.subscription_report_id')
+            ->whereBetween('sr.created_at', [$from, $to])
+            ->selectRaw("
+                CONCAT('O-', ro.id) as row_id,
+                sr.id as report_id,
+                s.full_name,
+                s.document,
+                s.email,
+                s.phone,
+                ro.entity as company,
+                'Other Debt' as debt_type,
+                '' as situation,
+                ro.expiration_days as delay,
+                ro.entity as entity,
+                ro.amount as total_amount,
+                NULL as line_total,
+                NULL as line_used,
+                sr.created_at as report_created_at,
+                'OK' as state
+            ");
+
+        $cards = DB::table('subscriptions as s')
+            ->join('subscription_reports as sr', 's.id', '=', 'sr.subscription_id')
+            ->join('report_credit_cards as rc', 'sr.id', '=', 'rc.subscription_report_id')
+            ->whereBetween('sr.created_at', [$from, $to])
+            ->selectRaw("
+                CONCAT('C-', rc.id) as row_id,
+                sr.id as report_id,
+                s.full_name,
+                s.document,
+                s.email,
+                s.phone,
+                rc.bank as company,
+                'Credit Card' as debt_type,
+                '' as situation,
+                0 as delay,
+                '' as entity,
+                NULL as total_amount,
+                rc.line as line_total,
+                rc.used as line_used,
+                sr.created_at as report_created_at,
+                'OK' as state
+            ");
+
+        $union = $loans->unionAll($others)->unionAll($cards);
+
+        $query = DB::query()
+            ->fromSub($union, 't')
+            ->orderBy('report_created_at')
+            ->orderBy('row_id');
+
+         return $query->cursor();
     }
 
     public function mapDebtType($debtType): string
@@ -59,26 +98,5 @@ class SubscriptionService
             'Credit Card' => 'Tarjeta de Crédito',
             default => 'Desconocido',
         };
-    }
-
-    public function transformData($results): array
-    {
-        return $results->map(fn($result): array => [
-            'id' => $result->report_id,
-            'full_name' => $result->full_name,
-            'document' => $result->document,
-            'email' => $result->email,
-            'phone' => $result->phone,
-            'company' => $result->company,
-            'debt_type' => $this->mapDebtType($result->debt_type),
-            'status' => $result->situation,
-            'delay' => $result->delay,
-            'entity' => $result->entity,
-            'total_amount' => $result->total_amount,
-            'line_total' => $result->line_total,
-            'line_used' => $result->line_used,
-            'report_uploaded_at' => $result->report_created_at,
-            'state' => $result->state,
-        ])->toArray();
     }
 }

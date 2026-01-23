@@ -1,43 +1,42 @@
 <?php
-
 namespace App\Exports;
 
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithMapping;
+use App\Services\SubscriptionService;
+use Maatwebsite\Excel\Concerns\FromIterator;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithMapping;
 
-class SubscriptionExport implements FromCollection, WithMapping, WithHeadings
+readonly class SubscriptionExport implements FromIterator, WithMapping, WithHeadings
 {
-    protected $subscriptions;
-
-    public function __construct($subscriptions)
-    {
-        $this->subscriptions = $subscriptions;
+    public function __construct(
+        private \Iterator           $rows,
+        private SubscriptionService $subscriptionService
+    ) {
     }
 
-    public function collection()
+    public function iterator(): \Iterator
     {
-        return collect($this->subscriptions);
+        return $this->rows;
     }
 
-    public function map($subscription): array
+    public function map($row): array
     {
         return [
-            $subscription['id'],
-            $subscription['full_name'],
-            $subscription['document'],
-            $subscription['email'],
-            $subscription['phone'],
-            $subscription['company'],
-            $subscription['debt_type'],
-            $subscription['status'],
-            $subscription['delay'],
-            $subscription['entity'],
-            $subscription['total_amount'],
-            $subscription['line_total'],
-            $subscription['line_used'],
-            $subscription['report_uploaded_at'],
-            $subscription['state'],
+            $row->report_id,
+            $row->full_name,
+            $row->document,
+            $row->email,
+            $row->phone,
+            $row->company,
+            $this->subscriptionService->mapDebtType($row->debt_type),
+            $row->situation,
+            $row->delay,
+            $row->entity,
+            $row->total_amount,
+            $row->line_total,
+            $row->line_used,
+            $row->report_created_at,
+            $row->state,
         ];
     }
 
@@ -62,4 +61,3 @@ class SubscriptionExport implements FromCollection, WithMapping, WithHeadings
         ];
     }
 }
-

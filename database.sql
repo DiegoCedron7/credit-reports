@@ -33,6 +33,10 @@ CREATE TABLE
 
 CREATE INDEX idx_subscription_reports_subscription_id ON subscription_reports (subscription_id);
 
+CREATE INDEX idx_subscription_reports_created_at ON subscription_reports (created_at);
+
+CREATE INDEX idx_sr_created_id ON subscription_reports (created_at, id);
+
 CREATE TABLE
     report_loans (
         id INT PRIMARY KEY AUTO_INCREMENT,

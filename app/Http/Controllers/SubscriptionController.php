@@ -1,14 +1,14 @@
 <?php
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Services\SubscriptionService;
 use App\Exports\SubscriptionExport;
+use App\Services\SubscriptionService;
+use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
 class SubscriptionController extends Controller
 {
-    protected $subscriptionService;
+    protected SubscriptionService $subscriptionService;
 
     public function __construct(SubscriptionService $subscriptionService)
     {
@@ -22,12 +22,13 @@ class SubscriptionController extends Controller
             'to' => 'required|date|after_or_equal:from',
         ]);
 
-        $data = [];
+         $stream = $this->subscriptionService
+             ->creditReportStream($validated['from'], $validated['to']);
 
-        $this->subscriptionService->getSubscriptionDataForExport($validated['from'], $validated['to'], function ($chunkData) use (&$data) {
-            $data = [...$data, ...$chunkData];
-        });
 
-        return Excel::download(new SubscriptionExport($data), 'subscription_report.xlsx');
+        return Excel::download(
+            new SubscriptionExport($stream->getIterator(), $this->subscriptionService),
+            'subscription_report.xlsx'
+        );
     }
 }
